@@ -168,6 +168,12 @@ def draw_boxes(img, bbox, names,object_id, identities=None, offset=(0, 0)):
 
 class DetectionPredictor(BasePredictor):
 
+    # colin
+    def __init__(self, cfg):
+        super().__init__(cfg)
+        self.frame_id = 0  # 🔧 初始化 frame_id（重要）
+
+
     def get_annotator(self, img):
         return Annotator(img, line_width=self.args.line_thickness, example=str(self.model.names))
 
@@ -239,6 +245,29 @@ class DetectionPredictor(BasePredictor):
             object_id = outputs[:, -1]
             
             draw_boxes(im0, bbox_xyxy, self.model.names, object_id,identities)
+
+        '''colin'''
+        # ==== [1] 自動產生檔名 ====
+        seq_name = Path(self.args.source).stem
+        output_path = Path(f"D:/YOLOv8-DeepSORT-Object-Tracking-main/eval/train_gt/{seq_name}.txt")
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # ==== [2] 如果是第一幀就清空檔案 ====
+        if self.frame_id == 0:
+            output_path.write_text("")  # 清空檔案
+
+        # ==== [3] 把當前幀的追蹤結果寫進 .txt ====
+        with open(output_path, "a") as f:
+            for track in outputs:
+                if track is None or len(track) < 6:
+                    continue
+                x1, y1, x2, y2, track_id, _ = track
+                w, h = x2 - x1, y2 - y1
+                line = f"{self.frame_id + 1},{int(track_id)},{x1:.2f},{y1:.2f},{w:.2f},{h:.2f}\n"
+                f.write(line)
+
+        self.frame_id += 1
+
 
         return log_string
 
